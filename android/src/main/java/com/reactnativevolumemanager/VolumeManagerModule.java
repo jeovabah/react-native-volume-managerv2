@@ -63,6 +63,43 @@ public class VolumeManagerModule
     this.category = null;
   }
 
+  @ReactMethod
+  public void startKeyListener() {
+      keyListener = new View.OnKeyListener() {
+          @Override
+          public boolean onKey(View v, int keyCode, KeyEvent event) {
+              if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+                  && event.getAction() == KeyEvent.ACTION_DOWN) {
+                  sendVolumeEvent(keyCode == KeyEvent.KEYCODE_VOLUME_UP);
+                  return false; // return false here so the volume still changes
+              }
+              return false;
+          }
+      };
+
+      getCurrentActivity().getWindow().getDecorView().setOnKeyListener(keyListener);
+  }
+
+  @ReactMethod
+  public void stopKeyListener() {
+      getCurrentActivity().getWindow().getDecorView().setOnKeyListener(null);
+  }
+
+  private void sendVolumeEvent(boolean isVolumeUp) {
+      int volumeLevel = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+      int maxVolumeLevel = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+      
+      WritableMap params = Arguments.createMap();
+      params.putBoolean("isVolumeUp", isVolumeUp);
+      params.putInt("volumeLevel", volumeLevel);
+      params.putInt("maxVolumeLevel", maxVolumeLevel);
+
+      reactContext
+              .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+              .emit("onVolumeButtonPress", params);
+  }
+}
+
   private void registerVolumeReceiver() {
     if (!volumeBR.isRegistered()) {
       IntentFilter filter = new IntentFilter(
